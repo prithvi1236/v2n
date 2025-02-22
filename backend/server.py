@@ -9,11 +9,14 @@ import nltk
 from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from collections import Counter
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
+
 
 # Load AI models
-T5_MODEL_NAME = "t5-large"
+T5_MODEL_NAME = "t5-base"
 tokenizer = T5Tokenizer.from_pretrained(T5_MODEL_NAME)
 summarization_model = T5ForConditionalGeneration.from_pretrained(T5_MODEL_NAME)
 similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
@@ -155,7 +158,7 @@ def process_youtube_video():
     try:
         request_data = request.get_json()
         youtube_link = request_data.get("link")
-
+        print("Received link:", youtube_link)
         if "v=" not in youtube_link:
             return jsonify({"error": "Invalid YouTube link."}), 400
 
@@ -169,6 +172,7 @@ def process_youtube_video():
         for timestamp, segment_text in segmented_transcripts:
             segment_title = generate_heading(segment_text)
             segment_summary = summarize_text(segment_text)
+            print(segment_summary)
             video_timestamp_link = youtube_link + "&t=" + str(convert_timestamp_to_seconds(timestamp)) + "s"
             summarized_results.append({
                 "link": video_timestamp_link,
