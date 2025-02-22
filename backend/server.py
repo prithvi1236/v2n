@@ -5,15 +5,45 @@ from transformers import T5ForConditionalGeneration, T5Tokenizer
 from sentence_transformers import SentenceTransformer
 import torch
 import re
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.corpus import stopwords
+from collections import Counter
 
 app = Flask(__name__)
 
 # Load AI models
-T5_MODEL_NAME = "t5-small"
+T5_MODEL_NAME = "t5-large"
 tokenizer = T5Tokenizer.from_pretrained(T5_MODEL_NAME)
 summarization_model = T5ForConditionalGeneration.from_pretrained(T5_MODEL_NAME)
 similarity_model = SentenceTransformer('all-MiniLM-L6-v2')
 
+# Download necessary NLTK data
+# nltk.download('punkt')
+# nltk.download('stopwords')
+# nltk.download('averaged_perceptron_tagger')
+
+def generate_heading(text):
+    # Tokenize the text
+    words = word_tokenize(text.lower())
+
+    # Remove stopwords and punctuation
+    stop_words = set(stopwords.words("english"))
+    words = [word for word in words if word.isalnum() and word not in stop_words]
+
+    # Perform POS tagging
+    tagged_words = nltk.pos_tag(words)
+
+    # Select only nouns and adjectives (important keywords)
+    important_words = [word for word, tag in tagged_words if tag.startswith('NN') or tag.startswith('JJ')]
+
+    # Get the most common words
+    word_counts = Counter(important_words)
+    top_words = [word for word, _ in word_counts.most_common(3)]  # Adjust the number as needed
+
+    # Generate heading
+    heading = " ".join(top_words).title()
+    return heading if heading else "No Keywords Found"
 def fetch_transcript(youtube_url, supported_languages=["en", "hi", "es", "fr", "ml"], target_language="en"):
     """Fetches the transcript for a given YouTube video, translates if needed, and returns a timestamped dictionary."""
     try:
@@ -137,7 +167,7 @@ def process_youtube_video():
         summarized_results = []
 
         for timestamp, segment_text in segmented_transcripts:
-            segment_title = generate_title(segment_text)
+            segment_title = generate_heading(segment_text)
             segment_summary = summarize_text(segment_text)
             video_timestamp_link = youtube_link + "&t=" + str(convert_timestamp_to_seconds(timestamp)) + "s"
             summarized_results.append({
